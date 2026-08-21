@@ -1,4 +1,4 @@
-# Reepo Summary AI
+# Repo Summary AI
 
 A GitHub Action that summarizes recent git commits/pushes (across all branches) into an AI-written digest, using any [Ollama](https://ollama.com) model — Gemma, DeepSeek, Llama, Mistral, whatever you've got running. Works with a local Ollama on a self-hosted runner or an external Ollama server reached over HTTPS.
 

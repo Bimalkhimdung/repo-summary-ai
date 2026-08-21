@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Core logic for the "Reepo Summary AI" action. Collects commits made
+# Core logic for the "Repo Summary AI" action. Collects commits made
 # across all branches in the given time window, asks an Ollama model to
 # write a subject + body digest, and exposes them as step outputs:
 #   subject, body, body-file, commit-count, has-commits
