@@ -21,7 +21,7 @@ This action only **generates** the digest (subject + body) as outputs — it del
 
 - name: Generate commit digest
   id: digest
-  uses: Bimalkhimdung/ollama-commit-digest@v1
+  uses: Bimalkhimdung/repo-summary-ai@v1
   with:
     ollama-url: ${{ secrets.OLLAMA_URL }}
     ollama-model: 'deepseek-r1:14b'   # optional, this is the default
