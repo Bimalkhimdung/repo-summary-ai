@@ -1,6 +1,6 @@
 name: 'Ollama Commit Digest'
-description: 'Summarize recent git commits/pushes across all branches into an AI-written digest using any Ollama model (Gemma, DeepSeek, Llama, Mistral, ...), local or remote.'
-author: 'BimalRai'
+description: 'Summarize recent git commits into an AI-written digest using any Ollama model, local or remote.'
+author: 'Bimalkhimdung'
 
 branding:
   icon: 'git-commit'
@@ -12,7 +12,7 @@ inputs:
     required: true
   ollama-model:
     description: 'Ollama model tag to use for summarization, e.g. gemma2:9b, deepseek-r1:14b, llama3.1:8b.'
-    required: true
+    required: false
     default: 'gemma2:9b'
   since:
     description: 'Time window to summarize, in git --since syntax, e.g. "24 hours ago", "7 days ago".'
@@ -84,4 +84,3 @@ runs:
         SINCE: ${{ inputs.since }}
         FETCH_TIMEOUT: ${{ inputs.fetch-timeout }}
       run: bash "${{ github.action_path }}/scripts/generate_digest.sh"
-
