@@ -1,4 +1,4 @@
-# Repo Summary AI
+# Ollama Commit Digest
 
 A GitHub Action that summarizes recent git commits/pushes (across all branches) into an AI-written digest, using any [Ollama](https://ollama.com) model — Gemma, DeepSeek, Llama, Mistral, whatever you've got running. Works with a local Ollama on a self-hosted runner or an external Ollama server reached over HTTPS.
 
@@ -37,6 +37,62 @@ This action only **generates** the digest (subject + body) as outputs — it del
 Full working examples:
 - [`examples/commit-digest-email.yml`](./examples/commit-digest-email.yml) — paired with [dawidd6/action-send-mail](https://github.com/dawidd6/action-send-mail)
 - [`examples/commit-digest-slack.yml`](./examples/commit-digest-slack.yml) — posted to a Slack webhook
+
+### If you want to send it as an email
+
+This action only generates the digest — pair it with [dawidd6/action-send-mail](https://github.com/dawidd6/action-send-mail) (or any other mail action) to actually deliver it. Full workflow:
+
+```yaml
+name: Daily Commit Digest (Email)
+
+on:
+  schedule:
+    - cron: '15 2 * * *' # adjust to your timezone; GitHub cron is always UTC
+  workflow_dispatch:
+    inputs:
+      since:
+        description: 'Time window to summarize (git --since syntax)'
+        required: false
+        default: '24 hours ago'
+
+permissions:
+  contents: read
+
+jobs:
+  digest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository (full history)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set today's date
+        run: echo "TODAY=$(date +'%Y-%m-%d')" >> "$GITHUB_ENV"
+
+      - name: Generate commit digest
+        id: digest
+        uses: Bimalkhimdung/repo-summary-ai@v1
+        with:
+          ollama-url: ${{ secrets.OLLAMA_URL }}
+          ollama-model: ${{ vars.OLLAMA_MODEL || 'deepseek-r1:14b' }}
+          since: ${{ github.event.inputs.since || '24 hours ago' }}
+
+      - name: Send email summary
+        if: steps.digest.outputs.has-commits == 'true'
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: ${{ secrets.MAIL_SERVER }}
+          server_port: ${{ secrets.MAIL_PORT }}
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          subject: "${{ steps.digest.outputs.subject }} — ${{ env.TODAY }}"
+          to: ${{ secrets.MAIL_TO }}
+          from: ${{ secrets.MAIL_FROM }}
+          body: file://${{ steps.digest.outputs.body-file }}
+```
+
+Required repo secrets for the email step: `MAIL_SERVER`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_FROM`, and `MAIL_TO` (comma-separate `MAIL_TO` to send to multiple recipients, e.g. `a@example.com,b@example.com`). The `if: steps.digest.outputs.has-commits == 'true'` guard skips the email entirely on days with no activity.
 
 ## Inputs
 

@@ -1,0 +1,39 @@
+# Example: post the digest to Slack instead of email, showing this action
+# composes with any downstream step — you're not locked into one channel.
+
+name: Daily Commit Digest (Slack)
+
+on:
+  schedule:
+    - cron: '15 2 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  digest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate commit digest
+        id: digest
+        uses: Bimalkhimdung/ollama-commit-digest@v1
+        with:
+          ollama-url: ${{ secrets.OLLAMA_URL }}
+          ollama-model: 'deepseek-r1:14b'
+
+      - name: Post to Slack
+        if: steps.digest.outputs.has-commits == 'true'
+        uses: slackapi/slack-github-action@v1
+        with:
+          payload: |
+            {
+              "text": "*${{ steps.digest.outputs.subject }}*\n${{ steps.digest.outputs.body }}"
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK

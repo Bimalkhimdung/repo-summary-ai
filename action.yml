@@ -1,0 +1,87 @@
+name: 'Ollama Commit Digest'
+description: 'Summarize recent git commits/pushes across all branches into an AI-written digest using any Ollama model (Gemma, DeepSeek, Llama, Mistral, ...), local or remote.'
+author: 'BimalRai'
+
+branding:
+  icon: 'git-commit'
+  color: 'blue'
+
+inputs:
+  ollama-url:
+    description: 'Base URL of the Ollama server, e.g. https://ollama.example.com or http://localhost:11434 (no trailing slash).'
+    required: true
+  ollama-model:
+    description: 'Ollama model tag to use for summarization, e.g. gemma2:9b, deepseek-r1:14b, llama3.1:8b.'
+    required: true
+    default: 'gemma2:9b'
+  since:
+    description: 'Time window to summarize, in git --since syntax, e.g. "24 hours ago", "7 days ago".'
+    required: false
+    default: '24 hours ago'
+  pull-model:
+    description: 'If "true", ask the Ollama server to pull the model when it is not already present.'
+    required: false
+    default: 'true'
+  fetch-timeout:
+    description: 'Timeout in seconds for the Ollama generate request.'
+    required: false
+    default: '180'
+
+outputs:
+  subject:
+    description: 'AI-generated one-line subject summarizing the window''s activity (falls back to a deterministic subject if the model output could not be parsed).'
+    value: ${{ steps.run.outputs.subject }}
+  body:
+    description: 'Full AI-generated digest body, plain text.'
+    value: ${{ steps.run.outputs.body }}
+  body-file:
+    description: 'Path to a file containing the digest body, for actions that accept a body as file://path (e.g. dawidd6/action-send-mail).'
+    value: ${{ steps.run.outputs.body-file }}
+  commit-count:
+    description: 'Number of commits found in the window.'
+    value: ${{ steps.run.outputs.commit-count }}
+  has-commits:
+    description: '"true" if any commits were found in the window, "false" otherwise.'
+    value: ${{ steps.run.outputs.has-commits }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Verify Ollama endpoint is reachable
+      shell: bash
+      env:
+        OLLAMA_URL: ${{ inputs.ollama-url }}
+      run: |
+        if [ -z "${OLLAMA_URL}" ]; then
+          echo "::error::ollama-url input is required."
+          exit 1
+        fi
+        if ! curl -sf -m 20 "${OLLAMA_URL}/api/tags" > /dev/null; then
+          echo "::error::Could not reach ${OLLAMA_URL}/api/tags. Check the URL, that Ollama is running, and that it's reachable from this runner."
+          exit 1
+        fi
+
+    - name: Ensure model is available on the server
+      if: inputs.pull-model == 'true'
+      shell: bash
+      env:
+        OLLAMA_URL: ${{ inputs.ollama-url }}
+        OLLAMA_MODEL: ${{ inputs.ollama-model }}
+      run: |
+        if ! curl -s -m 20 "${OLLAMA_URL}/api/tags" | jq -e --arg m "${OLLAMA_MODEL}" '.models[]?.name == $m' > /dev/null; then
+          echo "Model ${OLLAMA_MODEL} not found on the server, requesting a pull..."
+          curl -s -m 300 -X POST "${OLLAMA_URL}/api/pull" \
+            -H 'Content-Type: application/json' \
+            -d "$(jq -n --arg m "${OLLAMA_MODEL}" '{name: $m, stream: false}')" \
+            || echo "::warning::Could not trigger a remote pull of ${OLLAMA_MODEL}. Make sure it's already pulled on the server."
+
+    - name: Generate digest
+      id: run
+      shell: bash
+      env:
+        OLLAMA_URL: ${{ inputs.ollama-url }}
+        OLLAMA_MODEL: ${{ inputs.ollama-model }}
+        SINCE: ${{ inputs.since }}
+        FETCH_TIMEOUT: ${{ inputs.fetch-timeout }}
+      run: bash "${{ github.action_path }}/scripts/generate_digest.sh"
+
