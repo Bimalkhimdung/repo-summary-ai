@@ -1,4 +1,4 @@
-name: 'Ollama Commit Digest'
+name: 'Repo Summary AI'
 description: 'Summarize recent git commits into an AI-written digest using any Ollama model, local or remote.'
 author: 'Bimalkhimdung'
 
