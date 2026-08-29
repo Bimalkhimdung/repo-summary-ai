@@ -74,6 +74,7 @@ runs:
             -H 'Content-Type: application/json' \
             -d "$(jq -n --arg m "${OLLAMA_MODEL}" '{name: $m, stream: false}')" \
             || echo "::warning::Could not trigger a remote pull of ${OLLAMA_MODEL}. Make sure it's already pulled on the server."
+        fi
 
     - name: Generate digest
       id: run
